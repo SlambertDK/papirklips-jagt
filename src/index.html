@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papirklips Jagt - Slambert.com</title>
+    <link rel="icon" type="image/png" href="/favicon.png?v=2">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="game-mode">
+    <a href="http://slambert.com:8080" class="back-button">← Tilbage til Forside</a>
+
+    <!-- GAME CONTAINER - with game-mode class on body to make it visible -->
+    <div class="game-container" style="opacity: 1; pointer-events: all;">
+        <div class="container">
+            <div class="content">
+                <!-- Game HUD -->
+                <div class="game-hud" id="gameHud">
+                    <div class="hud-item">
+                        <span class="hud-label">Tid:</span>
+                        <span class="hud-value" id="timeDisplay">0s</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">Speed:</span>
+                        <span class="hud-value" id="speedDisplay">1.0x</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">Status:</span>
+                        <span class="hud-value" id="statusDisplay">Normal</span>
+                    </div>
+                </div>
+
+                <!-- Touch indicator for mobile -->
+                <div class="touch-indicator" id="touchIndicator">
+                    <div class="touch-ring"></div>
+                    <div class="touch-dot"></div>
+                </div>
+
+                <!-- Papirklips (Paperclip) -->
+                <div class="paperclip" id="paperclip">
+                    📎
+                </div>
+
+                <!-- Power-ups and Obstacles Container -->
+                <div id="itemsContainer"></div>
+
+                <!-- Game Over Screen -->
+                <div class="game-over" id="gameOver">
+                    <div class="game-over-content">
+                        <div class="paperclip-big">📎</div>
+                        <h2>Du er nu blevet en papirklips</h2>
+                    </div>
+                </div>
+
+                <!-- Custom Notification Toast -->
+                <div id="customNotification" class="custom-notification"></div>
+
+                <!-- Game Instructions -->
+                <div class="game-instructions" id="gameInstructions" style="display: flex;">
+                    <div class="instructions-content">
+                        <h2>📎 Papirklips Spillet</h2>
+                        <p>Undgå papirklipsen så længe som muligt!</p>
+                        <ul>
+                            <li>🖱️ <strong>Desktop:</strong> Flyt musen for at bevæge dig</li>
+                            <li>📱 <strong>Mobile:</strong> Tryk på skærmen for at teleportere</li>
+                            <li>⚡ <strong>Grønne items:</strong> Hjælper dig (langsommere papirklips)</li>
+                            <li>💀 <strong>Røde items:</strong> Gør det sværere (hurtigere papirklips)</li>
+                            <li>🎯 Jo længere tid, jo sværere bliver det!</li>
+                        </ul>
+                        <button id="startGame">Start Spillet!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/game.js"></script>
+</body>
+</html>
