@@ -1,14 +1,33 @@
 // Papirklips Jagt - Server
-// Port 8082
+// Supports both staging (8082) and production (8084) environments
 
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8082;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Environment-based configuration
+const isProduction = NODE_ENV === 'production';
+const isStaging = NODE_ENV === 'staging';
+
+console.log(`🎮 Starting Papirklips Jagt in ${NODE_ENV} mode on port ${PORT}`);
+
+// Production optimizations
+if (isProduction) {
+  app.use(compression());
+  
+  // Production error handling
+  app.use((err, req, res, next) => {
+    console.error('Production error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+}
 
 // Database connection
 const pool = new Pool({
@@ -23,13 +42,27 @@ console.log('Connecting to Postgres with:', {
   host: process.env.PGHOST,
   port: process.env.PGPORT,
   database: process.env.PGDATABASE,
-  user: process.env.PGUSER
+  user: process.env.PGUSER,
+  environment: NODE_ENV
 });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'src')));
+
+// Static file serving with caching for production
+if (isProduction) {
+  app.use(express.static(path.join(__dirname, 'src'), { 
+    maxAge: '1d',
+    setHeaders: (res, path) => {
+      if (path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes for HTML
+      }
+    }
+  }));
+} else {
+  app.use(express.static(path.join(__dirname, 'src')));
+}
 
 // Game session tokens for anti-cheat
 const gameSessions = new Map();
@@ -201,5 +234,10 @@ app.get('/api/leaderboard', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🎮 Papirklips Jagt running on http://localhost:${PORT}`);
+  console.log(`🎮 Papirklips Jagt (${NODE_ENV}) running on http://localhost:${PORT}`);
+  if (isStaging) {
+    console.log(`🌐 Staging URL: http://slambert.com:${PORT}`);
+  } else if (isProduction) {
+    console.log(`🚀 Production URL: http://slambert.com:${PORT}`);
+  }
 });

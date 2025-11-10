@@ -1,25 +1,25 @@
 #  Papirklips Jagt
 
-**Survival game** hvor spilleren undgår en papirklips så længe som muligt. Enkelt koncept med stigende sværhedsgrad og strategiske power-ups.
+**Survival game** hvor spilleren undgï¿½r en papirklips sï¿½ lï¿½nge som muligt. Enkelt koncept med stigende svï¿½rhedsgrad og strategiske power-ups.
 
 ---
 
 ##  Gameplay
 
-### Mål
-Overlev så længe som muligt uden at blive ramt af den jagtende papirklips!
+### Mï¿½l
+Overlev sï¿½ lï¿½nge som muligt uden at blive ramt af den jagtende papirklips!
 
 ### Controls
-- ** Desktop**: Flyt musen for at bevæge dig rundt
-- ** Mobile**: Tryk på skærmen for at teleportere til touchpunktet
+- ** Desktop**: Flyt musen for at bevï¿½ge dig rundt
+- ** Mobile**: Tryk pï¿½ skï¿½rmen for at teleportere til touchpunktet
 
 ### Items
-- ** Grønne items**: Sænker papirklipsens hastighed midlertidigt
-- ** Røde items**: Øger papirklipsens hastighed (undgå dem!)
-- Items spawner tilfældigt og forsvinder efter kort tid
+- ** Grï¿½nne items**: Sï¿½nker papirklipsens hastighed midlertidigt
+- ** Rï¿½de items**: ï¿½ger papirklipsens hastighed (undgï¿½ dem!)
+- Items spawner tilfï¿½ldigt og forsvinder efter kort tid
 
-### Sværhedsgrad
-Spillet bliver gradvist sværere:
+### Svï¿½rhedsgrad
+Spillet bliver gradvist svï¿½rere:
 - **0-30s**: Speed 1.0x
 - **30-60s**: Speed 1.5x  
 - **60-90s**: Speed 2.0x
@@ -40,7 +40,7 @@ npm install
 npm run dev    # Nodemon auto-reload
 ```
 
-Spillet kører på: **http://localhost:8082**
+Spillet kï¿½rer pï¿½: **http://localhost:8082**
 
 ### Production
 ```powershell
@@ -62,7 +62,7 @@ npm start
 - **CORS** - Cross-origin requests
 
 ### Anti-Cheat
-- Session tokens (10 min udløb)
+- Session tokens (10 min udlï¿½b)
 - Rate limiting (5 submissions/minut)
 - Input validation
 - Duplicate score detection
@@ -121,7 +121,7 @@ Indsend score med session token.
 {
   "success": true,
   "rank": 5,
-  "message": "Godt klaret! Du er nr. 5 på leaderboardet! "
+  "message": "Godt klaret! Du er nr. 5 pï¿½ leaderboardet! "
 }
 ```
 
@@ -164,7 +164,7 @@ CREATE INDEX idx_survival_time ON leaderboard(survival_time DESC);
 ```
 
 ### Environment Variables
-Se .env.example for påkrævede variabler:
+Se .env.example for pï¿½krï¿½vede variabler:
 ```env
 PGHOST=localhost
 PGPORT=5432
@@ -207,8 +207,8 @@ pm2 save
 
 ###  Implementeret
 - Mouse og touch controls
-- Progressive sværhedsgrad
-- Power-up system (grønne/røde items)
+- Progressive svï¿½rhedsgrad
+- Power-up system (grï¿½nne/rï¿½de items)
 - PostgreSQL leaderboard
 - Session-based anti-cheat
 - Rate limiting
@@ -216,7 +216,7 @@ pm2 save
 - Mobile touch indicator
 - Game HUD (tid, speed, status)
 
-###  Fremtidige Idéer
+###  Fremtidige Idï¿½er
 - Flere item-typer (shield, freeze, etc.)
 - Achievements system
 - Daily challenges
@@ -254,7 +254,7 @@ psql -h localhost -U your_user -d appdb
 
 **Port allerede i brug:**
 ```powershell
-# Find process på port 8082
+# Find process pï¿½ port 8082
 netstat -ano | findstr :8082
 
 # Stop process
@@ -262,8 +262,8 @@ taskkill /PID <process-id> /F
 ```
 
 **Session token expired:**
-- Sessions udløber efter 10 minutter
-- Start nyt spil for at få ny token
+- Sessions udlï¿½ber efter 10 minutter
+- Start nyt spil for at fï¿½ ny token
 - Check browser console for fejlmeddelelser
 
 ---

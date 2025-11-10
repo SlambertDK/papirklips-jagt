@@ -1,66 +1,119 @@
 # Deploy Papirklips Jagt to Production
 Write-Host '📎 Deploying Papirklips Jagt to Production...' -ForegroundColor Green
 
+# Configuration
+$stagingPath = "Z:\papirklips-slambert-com-staging"
+$prodPath = "Z:\papirklips-jagt"
+$nasPath = "/volume1/@appdata/ContainerManager/all_shares/web/papirklips_com_prod"
+$sshHost = "nas-slambert"  # Uses SSH config with key authentication
+$pm2Process = "papirklips-prod"
+$prodPort = 8084
+
 # Create production directory if it doesn't exist
-$prodPath = "z:\papirklips-jagt"
 if (!(Test-Path $prodPath)) {
     Write-Host "📁 Creating production directory..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $prodPath -Force | Out-Null
 }
 
-# Create backup
+# Create backup using timestamp
 $backupName = "papirklips-jagt_backup_$(Get-Date -Format 'yyyy-MM-dd_HH-mm')"
+$backupPath = "Z:\$backupName"
 if (Test-Path $prodPath) {
     Write-Host "📦 Creating backup: $backupName" -ForegroundColor Cyan
-    Copy-Item -Path $prodPath -Destination "z:\$backupName" -Recurse -Force -ErrorAction SilentlyContinue
+    robocopy "$prodPath" "$backupPath" /MIR /XD node_modules .git /XF *.log
 }
 
-# Copy files to production
-Write-Host '📂 Copying files to production...' -ForegroundColor Cyan
-Remove-Item -Path "$prodPath\*" -Recurse -Force -ErrorAction SilentlyContinue
-Copy-Item -Path "z:\papirklips-jagt-staging\*" -Destination "$prodPath\" -Recurse -Force -Exclude @('node_modules', '.git', 'test-*', '*.log')
+# Copy files to production using Robocopy (Phase 1 method)
+Write-Host '📂 Syncing files to production using Robocopy...' -ForegroundColor Cyan
 
-# Copy node_modules separately (faster)
+# Check if staging workspace exists, otherwise use current directory
+if (!(Test-Path $stagingPath)) {
+    Write-Host "⚠️  Staging workspace $stagingPath not found, using current directory instead" -ForegroundColor Yellow
+    $stagingPath = Get-Location
+}
+
+robocopy "$stagingPath" "$prodPath" /MIR /XD node_modules .git test-* /XF *.log
+
+# Copy node_modules separately for performance
 Write-Host '📦 Copying node_modules...' -ForegroundColor Cyan
-if (!(Test-Path "$prodPath\node_modules")) {
-    Copy-Item -Path "z:\papirklips-jagt-staging\node_modules" -Destination "$prodPath\node_modules" -Recurse -Force
+if (Test-Path "$stagingPath\node_modules") {
+    robocopy "$stagingPath\node_modules" "$prodPath\node_modules" /MIR
 }
 
 Write-Host '🔄 Deploying to NAS via SSH...' -ForegroundColor Cyan
-$nasPath = "/volume1/@appdata/ContainerManager/all_shares/web/papirklips_com"
 
 # Create directory on NAS
-ssh Familieadmin@192.168.86.41 "mkdir -p $nasPath"
+ssh $sshHost "mkdir -p $nasPath"
 
-# Rsync files to NAS
-Write-Host '📤 Uploading files to NAS...' -ForegroundColor Cyan
-& "C:\Program Files\Git\usr\bin\rsync.exe" -avz --delete `
-    --exclude 'node_modules' `
-    --exclude '.git' `
-    --exclude 'test-*' `
-    --exclude '*.log' `
-    "$prodPath/" "Familieadmin@192.168.86.41:$nasPath/"
+# Upload to NAS using SSH with tar
+Write-Host '📤 Uploading files to NAS via SSH...' -ForegroundColor Cyan
+
+# Create tar archive for efficient transfer
+$tarFile = "production-files.tar.gz"
+tar -czf $tarFile -C $prodPath *
+
+# Transfer via SSH and extract
+$transferCommand = @"
+cat > /tmp/$tarFile && cd $nasPath && rm -rf * && tar -xzf /tmp/$tarFile && rm /tmp/$tarFile
+"@
+
+Get-Content $tarFile -AsByteStream | ssh $sshHost $transferCommand
+$uploadExitCode = $LASTEXITCODE
+
+# Clean up local files
+Remove-Item $tarFile -Force -ErrorAction SilentlyContinue
+
+if ($uploadExitCode -ne 0) {
+    Write-Host "❌ Failed to upload files to NAS" -ForegroundColor Red
+    exit 1
+}
 
 # Install dependencies on NAS
 Write-Host '📦 Installing dependencies on NAS...' -ForegroundColor Cyan
-ssh Familieadmin@192.168.86.41 "cd $nasPath; npm install --production"
+ssh $sshHost "cd $nasPath && /usr/local/bin/node /usr/local/bin/npm install --production"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Failed to install dependencies" -ForegroundColor Red
+    exit 1
+}
 
-# Setup PM2 process
-Write-Host '🚀 Setting up PM2...' -ForegroundColor Cyan
-ssh Familieadmin@192.168.86.41 "cd $nasPath; pm2 delete papirklips-website; pm2 start server.js --name papirklips-website; pm2 save"
+# Setup PM2 process with correct port
+Write-Host '🚀 Setting up PM2 with production settings...' -ForegroundColor Cyan
+$pm2Config = @"
+{
+    "name": "$pm2Process",
+    "script": "server.js",
+    "cwd": "$nasPath",
+    "env": {
+        "NODE_ENV": "production",
+        "PORT": "$prodPort"
+    },
+    "instances": 1,
+    "exec_mode": "fork"
+}
+"@
+
+# Write PM2 config and start process
+ssh $sshHost "cd $nasPath && echo '$pm2Config' > ecosystem.config.js"
+ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 delete $pm2Process || true"
+ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 start ecosystem.config.js"
+ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 save"
 
 Start-Sleep -Seconds 5
 
 # Test production
 Write-Host '🔍 Testing production...' -ForegroundColor Cyan
 try {
-    $result = Invoke-RestMethod -Uri 'http://slambert.com:8082/api/leaderboard'
+    $result = Invoke-RestMethod -Uri "http://192.168.86.41:$prodPort/api/leaderboard"
     Write-Host '✅ Production deployment successful!' -ForegroundColor Green
     Write-Host "   Leaderboard has $($result.Count) entries" -ForegroundColor Gray
+    Write-Host "   Production running on port $prodPort" -ForegroundColor Gray
 } catch {
     Write-Host '❌ Production test failed!' -ForegroundColor Red
     Write-Host "   Error: $_" -ForegroundColor Red
+    Write-Host "   Check PM2 status: ssh $sshHost 'pm2 status'" -ForegroundColor Yellow
 }
 
 Write-Host ''
-Write-Host '📎 Papirklips Jagt is now live at http://slambert.com:8082' -ForegroundColor Green
+Write-Host "📎 Papirklips Jagt Production is now live at http://192.168.86.41:$prodPort" -ForegroundColor Green
+Write-Host "   Staging: http://192.168.86.41:8082" -ForegroundColor Cyan
+Write-Host "   Production: http://192.168.86.41:$prodPort" -ForegroundColor Cyan
