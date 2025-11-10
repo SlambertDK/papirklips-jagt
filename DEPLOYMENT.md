@@ -12,16 +12,31 @@ Production deployment procedures og troubleshooting for Papirklips Jagt.
 
 ## 🚀 Quick Deploy
 
-### Staging Deploy
+### Staging Deploy (with Git sync)
 ```powershell
 cd Z:\papirklips-slambert-com-staging
 .\deploy.ps1
+# OR
+npm run deploy:staging
 ```
 
-### Production Deploy  
+### Production Deploy (with Git sync)
 ```powershell
 cd Z:\papirklips-slambert-com-staging
 .\deploy-prod.ps1
+# OR 
+npm run deploy:prod
+```
+
+### Skip Git Integration (if needed)
+```powershell
+# Skip Git commit/push during deployment
+.\deploy.ps1 -SkipGit
+.\deploy-prod.ps1 -SkipGit
+
+# OR via npm
+npm run deploy:staging:nogit
+npm run deploy:prod:nogit
 ```
 
 ### Backup & Rollback
@@ -58,9 +73,10 @@ cd Z:\papirklips-slambert-com-staging
 ```
 
 **Hvad sker der:**
-- Synkroniserer filer fra Z:\papirklips-slambert-com-staging til NAS
-- Installerer dependencies på NAS
-- Genstarter PM2 process "papirklips-staging"
+- **[0/4] Git Integration**: Commit og push ændringer til GitHub automatisk
+- **[1/4] File Sync**: Synkroniserer filer fra Z:\papirklips-slambert-com-staging til NAS
+- **[2/4] Dependencies**: Installerer dependencies på NAS
+- **[3/4] PM2 Setup**: Genstarter PM2 process "papirklips-staging"
 - Kører på port: 8082
 
 ### 3. Deploy til Production (Phase 1 - Robocopy Method)
@@ -71,11 +87,13 @@ cd Z:\papirklips-slambert-com-staging
 ```
 
 **Hvad sker der:**
-- Robocopy fra staging til Z:\papirklips-jagt (local production copy)
-- Automatisk backup af existing production før deployment
-- Rsync til NAS production folder
-- Setup PM2 process "papirklips-prod" med port 8084
-- Health check på http://192.168.86.41:8084
+- **[0/6] Git Integration**: Commit og push ændringer til GitHub automatisk  
+- **[1/6] Directory Setup**: Opretter production directory
+- **[2/6] Backup**: Automatisk backup af existing production før deployment
+- **[3/6] File Copy**: Robocopy fra staging til Z:\papirklips-jagt (local production copy)
+- **[4/6] Dependencies**: Copy node_modules for performance
+- **[5/6] NAS Deploy**: Upload til NAS production folder via SSH
+- **[6/6] Health Check**: Setup PM2 process "papirklips-prod" + test på http://192.168.86.41:8084
 
 ### 4. Verification
 

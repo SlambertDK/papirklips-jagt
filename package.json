@@ -9,7 +9,9 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "deploy:staging": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1",
+    "deploy:staging:nogit": "powershell -ExecutionPolicy Bypass -File ./deploy.ps1 -SkipGit",
     "deploy:prod": "powershell -ExecutionPolicy Bypass -File ./deploy-prod.ps1",
+    "deploy:prod:nogit": "powershell -ExecutionPolicy Bypass -File ./deploy-prod.ps1 -SkipGit",
     "backup": "powershell -ExecutionPolicy Bypass -File ./backup-and-rollback.ps1 backup both",
     "rollback:staging": "powershell -ExecutionPolicy Bypass -File ./backup-and-rollback.ps1 rollback staging",
     "rollback:prod": "powershell -ExecutionPolicy Bypass -File ./backup-and-rollback.ps1 rollback production"

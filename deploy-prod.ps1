@@ -1,4 +1,8 @@
 # Deploy Papirklips Jagt to Production
+param(
+    [switch]$SkipGit  # Skip Git commit/push if specified
+)
+
 Write-Host '📎 Deploying Papirklips Jagt to Production...' -ForegroundColor Green
 
 # Configuration
@@ -9,9 +13,46 @@ $sshHost = "nas-slambert"  # Uses SSH config with key authentication
 $pm2Process = "papirklips-prod"
 $prodPort = 8084
 
+# Step 0: Git integration - Commit and push changes
+if (!$SkipGit) {
+    Write-Host "`n[0/6] Git integration - Checking for changes..." -ForegroundColor Yellow
+    $gitStatus = & git status --porcelain
+    if ($gitStatus) {
+        Write-Host "📝 Found uncommitted changes. Committing to Git..." -ForegroundColor Gray
+        
+        # Add all changes
+        & git add .
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Failed to stage Git changes" -ForegroundColor Red
+            exit 1
+        }
+        
+        # Create commit with timestamp
+        $commitMessage = "🚀 Production deployment $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n`nAuto-commit from production deployment script"
+        & git commit -m $commitMessage
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Failed to commit changes" -ForegroundColor Red
+            exit 1
+        }
+        
+        # Push to GitHub
+        & git push origin main
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Failed to push to GitHub" -ForegroundColor Red
+            exit 1
+        }
+        
+        Write-Host "✅ Changes committed and pushed to GitHub" -ForegroundColor Green
+    } else {
+        Write-Host "✅ No uncommitted changes found" -ForegroundColor Green
+    }
+} else {
+    Write-Host "`n[0/6] Skipping Git integration (--SkipGit specified)" -ForegroundColor Yellow
+}
+
 # Create production directory if it doesn't exist
 if (!(Test-Path $prodPath)) {
-    Write-Host "📁 Creating production directory..." -ForegroundColor Cyan
+    Write-Host "[1/6] 📁 Creating production directory..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $prodPath -Force | Out-Null
 }
 
@@ -19,12 +60,12 @@ if (!(Test-Path $prodPath)) {
 $backupName = "papirklips-jagt_backup_$(Get-Date -Format 'yyyy-MM-dd_HH-mm')"
 $backupPath = "Z:\$backupName"
 if (Test-Path $prodPath) {
-    Write-Host "📦 Creating backup: $backupName" -ForegroundColor Cyan
+    Write-Host "[2/6] 📦 Creating backup: $backupName" -ForegroundColor Cyan
     robocopy "$prodPath" "$backupPath" /MIR /XD node_modules .git /XF *.log
 }
 
 # Copy files to production using Robocopy (Phase 1 method)
-Write-Host '📂 Syncing files to production using Robocopy...' -ForegroundColor Cyan
+Write-Host '[3/6] 📂 Syncing files to production using Robocopy...' -ForegroundColor Cyan
 
 # Check if staging workspace exists, otherwise use current directory
 if (!(Test-Path $stagingPath)) {
@@ -35,12 +76,12 @@ if (!(Test-Path $stagingPath)) {
 robocopy "$stagingPath" "$prodPath" /MIR /XD node_modules .git test-* /XF *.log
 
 # Copy node_modules separately for performance
-Write-Host '📦 Copying node_modules...' -ForegroundColor Cyan
+Write-Host '[4/6] 📦 Copying node_modules...' -ForegroundColor Cyan
 if (Test-Path "$stagingPath\node_modules") {
     robocopy "$stagingPath\node_modules" "$prodPath\node_modules" /MIR
 }
 
-Write-Host '🔄 Deploying to NAS via SSH...' -ForegroundColor Cyan
+Write-Host '[5/6] 🔄 Deploying to NAS via SSH...' -ForegroundColor Cyan
 
 # Create directory on NAS
 ssh $sshHost "mkdir -p $nasPath"
@@ -101,7 +142,7 @@ ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 
 Start-Sleep -Seconds 5
 
 # Test production
-Write-Host '🔍 Testing production...' -ForegroundColor Cyan
+Write-Host '[6/6] 🔍 Testing production...' -ForegroundColor Cyan
 try {
     $result = Invoke-RestMethod -Uri "http://192.168.86.41:$prodPort/api/leaderboard"
     Write-Host '✅ Production deployment successful!' -ForegroundColor Green
