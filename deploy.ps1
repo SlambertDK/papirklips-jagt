@@ -110,33 +110,45 @@ Write-Host "Dependencies installed!" -ForegroundColor Green
 
 # Step 3: Setup PM2 process with staging configuration
 Write-Host "`n[3/4] Setting up PM2 with staging settings..." -ForegroundColor Yellow
-$pm2Config = @"
-module.exports = {
-  apps: [{
-    name: "$pm2Process",
-    script: "./server.js",
-    env: {
-      NODE_ENV: "staging",
-      PORT: 8082,
-      PATH: "/usr/local/bin:/usr/bin:/bin"
-    },
-    env_file: ".env.staging"
-  }]
-};
-"@
 
-# Write PM2 config and start process
-ssh $sshHost "cd $remotePath && echo '$pm2Config' > ecosystem.config.js"
-ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 delete $pm2Process || true"
-ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 start ecosystem.config.js"
-ssh $sshHost "PATH=/usr/local/bin:\$PATH /usr/local/bin/node /usr/local/bin/pm2 save"
+Write-Host "Managing PM2 process..." -ForegroundColor Gray  
+# Delete existing process if it exists
+& ssh $sshHost "PATH=/usr/local/bin:`$PATH /usr/local/bin/node /usr/local/bin/pm2 delete papirklips-staging 2>/dev/null || true"
+
+# Start PM2 process directly with environment variables
+$pm2StartCmd = "cd $remotePath && PATH=/usr/local/bin:`$PATH NODE_ENV=staging PORT=8082 /usr/local/bin/node /usr/local/bin/pm2 start server.js --name papirklips-staging"
+& ssh $sshHost $pm2StartCmd
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to setup PM2 process" -ForegroundColor Red
+    Write-Host "❌ Failed to start PM2 process" -ForegroundColor Red
+    Write-Host "Checking PM2 status..." -ForegroundColor Yellow
+    & ssh $sshHost "PATH=/usr/local/bin:`$PATH /usr/local/bin/node /usr/local/bin/pm2 status"
     exit 1
 }
 
-Write-Host "`nDeployment complete!" -ForegroundColor Green
+# Save PM2 configuration
+& ssh $sshHost "PATH=/usr/local/bin:`$PATH /usr/local/bin/node /usr/local/bin/pm2 save"
+
+Write-Host "✅ PM2 process configured successfully" -ForegroundColor Green
+
+# Step 4: Test staging endpoint
+Write-Host "`n[4/4] Testing staging endpoint..." -ForegroundColor Yellow
+Start-Sleep -Seconds 3  # Give PM2 time to start
+
+try {
+    $testResult = ssh $sshHost "curl -s http://localhost:8082/api/leaderboard"
+    if ($testResult -match '"initials"') {
+        Write-Host "✅ Staging API test passed!" -ForegroundColor Green
+        $leaderboardData = $testResult | ConvertFrom-Json
+        Write-Host "   Leaderboard has $($leaderboardData.Count) entries" -ForegroundColor Gray
+    } else {
+        Write-Host "⚠️  API response unexpected: $testResult" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "❌ Staging API test failed: $_" -ForegroundColor Red
+}
+
+Write-Host "`n✅ Deployment complete!" -ForegroundColor Green
 Write-Host "Papirklips Jagt is now running on http://192.168.86.41:8082 (staging)" -ForegroundColor Cyan
 Write-Host "`nUseful commands:" -ForegroundColor Yellow
 Write-Host "   Check status: ssh $sshHost 'pm2 status'" -ForegroundColor Yellow
