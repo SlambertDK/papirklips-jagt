@@ -30,9 +30,9 @@ export async function onRequestPost(context) {
       );
     }
 
-    if (typeof initials !== 'string' || initials.length !== 3) {
+    if (typeof initials !== 'string' || initials.length < 1 || initials.length > 20) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Initials must be exactly 3 characters' }),
+        JSON.stringify({ success: false, error: 'Gamertag must be between 1 and 20 characters' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
