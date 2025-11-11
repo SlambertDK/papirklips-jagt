@@ -16,10 +16,14 @@ export async function onRequestPost(context) {
 
   try {
     const body = await request.json();
-    const { initials, survivalTime, sessionToken, clientId } = body || {};
+    // Accept both old and new field names
+    const { initials, survivalTime, time, sessionToken, token, clientId } = body || {};
+    
+    const finalTime = survivalTime || time;
+    const finalToken = sessionToken || token;
 
     // Valider input
-    if (!initials || !survivalTime || !sessionToken || !clientId) {
+    if (!initials || !finalTime || !finalToken || !clientId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required fields' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -33,8 +37,8 @@ export async function onRequestPost(context) {
       );
     }
 
-    const time = parseInt(survivalTime, 10);
-    if (isNaN(time) || time < 1 || time > 9999) {
+    const parsedTime = parseInt(finalTime, 10);
+    if (isNaN(parsedTime) || parsedTime < 1 || parsedTime > 9999) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid survival time' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -48,7 +52,7 @@ export async function onRequestPost(context) {
     // Valider session token
     const session = await env.DB.prepare(`
       SELECT client_id, created_at, used FROM sessions WHERE token = ?
-    `).bind(sessionToken).first();
+    `).bind(finalToken).first();
 
     if (!session) {
       return new Response(
@@ -100,7 +104,7 @@ export async function onRequestPost(context) {
     const duplicate = await env.DB.prepare(`
       SELECT id FROM leaderboard 
       WHERE ip_hash = ? AND survival_time = ? AND created_at > ?
-    `).bind(ipHash, time, tenSecondsAgo).first();
+    `).bind(ipHash, parsedTime, tenSecondsAgo).first();
 
     if (duplicate) {
       return new Response(
@@ -113,12 +117,12 @@ export async function onRequestPost(context) {
     await env.DB.prepare(`
       INSERT INTO leaderboard (initials, survival_time, ip_hash, created_at)
       VALUES (?, ?, ?, ?)
-    `).bind(initials.toUpperCase(), time, ipHash, now).run();
+    `).bind(initials.toUpperCase(), parsedTime, ipHash, now).run();
 
     // Marker session som brugt
     await env.DB.prepare(`
       UPDATE sessions SET used = 1 WHERE token = ?
-    `).bind(sessionToken).run();
+    `).bind(finalToken).run();
 
     // Gem rate limit
     await env.DB.prepare(`
