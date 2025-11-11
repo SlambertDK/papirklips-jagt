@@ -645,14 +645,23 @@ async function loadLeaderboard() {
         const result = await response.json();
         
         if (result.success) {
-            // Hvis brugeren har et gamertag, hent også deres placering
+            // Hvis brugeren har et gamertag, beregn placering fra leaderboard
             if (gameState.currentUserGamertag && gameState.currentUserTime !== undefined) {
-                const userResponse = await fetch(`${API_BASE_URL}/api/user-rank/${encodeURIComponent(gameState.currentUserGamertag)}/${gameState.currentUserTime}`);
-                const userResult = await userResponse.json();
-                
-                if (userResult.success) {
-                    displayLeaderboard(result.data, userResult.data, userResult.rank);
-                } else {
+                try {
+                    // Find brugerens placering i leaderboard
+                    const userRank = result.data.findIndex(entry => 
+                        entry.initials === gameState.currentUserGamertag && 
+                        Math.abs(entry.survival_time - gameState.currentUserTime) < 0.1
+                    ) + 1;
+                    
+                    if (userRank > 0) {
+                        const userResult = { success: true, data: null, rank: userRank };
+                        displayLeaderboard(result.data, userResult.data, userResult.rank);
+                    } else {
+                        displayLeaderboard(result.data);
+                    }
+                } catch (error) {
+                    console.error('Error calculating user rank:', error);
                     displayLeaderboard(result.data);
                 }
             } else {

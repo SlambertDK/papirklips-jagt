@@ -1,5 +1,6 @@
 name = "papirklips-jagt"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "src"
 
 # Udfyld database IDs efter du har kørt:
 # wrangler d1 create papirklips-prod
