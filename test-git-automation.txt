@@ -1,2 +1,0 @@
-Test file to verify automatic Git integration in deployment scripts.
-Created at: 2025-11-10 20:44

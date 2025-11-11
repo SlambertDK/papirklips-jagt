@@ -1,0 +1,18 @@
+name = "papirklips-jagt"
+compatibility_date = "2024-01-01"
+
+# Udfyld database IDs efter du har kørt:
+# wrangler d1 create papirklips-prod
+# wrangler d1 create papirklips-staging
+
+# Production environment
+[[d1_databases]]
+binding = "DB"
+database_name = "papirklips-prod"
+database_id = "d52ecc20-6e03-41d1-baee-c7954d6fe327"
+
+# Preview/staging environment  
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "papirklips-staging"
+database_id = "6cbe6338-bac9-4d01-85de-344d785c16bc"
