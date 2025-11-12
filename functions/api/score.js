@@ -110,10 +110,17 @@ export async function onRequestPost(context) {
     }
 
     // Gem score
-    await env.DB.prepare(`
+    const result = await env.DB.prepare(`
       INSERT INTO leaderboard (initials, survival_time, ip_hash, created_at)
       VALUES (?, ?, ?, ?)
     `).bind(initials.toUpperCase(), time, ipHash, now).run();
+
+    // Beregn rank - antallet af bedre scores + 1
+    const rankResult = await env.DB.prepare(`
+      SELECT COUNT(*) + 1 as rank
+      FROM leaderboard 
+      WHERE survival_time > ?
+    `).bind(time).first();
 
     // Marker session som brugt
     await env.DB.prepare(`
@@ -127,7 +134,7 @@ export async function onRequestPost(context) {
     `).bind(ipHash, now).run();
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, data: result, rank: rankResult.rank }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
